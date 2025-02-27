@@ -1,11 +1,17 @@
-import { useState, createContext } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { useState, createContext, useEffect } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import NavBar from './components/NavBar/NavBar';
 import Landing from './components/Landing/Landing';
 import Dashboard from './components/Dashboard/Dashboard';
 import SignupForm from './components/SignupForm/SignupForm';
 import SigninForm from './components/SigninForm/SigninForm';
 import * as authService from '../src/services/authService'; // import the authservice
+//hoot stuff
+import HootList from './components/HootList/HootList';
+import * as hootService from './services/hootService';
+import HootDetails from './components/HootDetails/HootDetails';
+import HootForm from './components/HootForm/HootForm';
+
 
 export const AuthedUserContext = createContext(null);
 
@@ -16,15 +22,44 @@ const App = () => {
     authService.signout();
     setUser(null);
   };
+  //===============================================================
+  //anything related to hoots:
+  const [hoots, setHoots] = useState([]);
+  const navigate = useNavigate();
 
+  useEffect(() => {
+    const fetchAllHoots = async () => {
+      const hootsData = await hootService.index();
+      setHoots(hootsData);
+    };
+    if (user) fetchAllHoots();
+  }, [user]); // we added this so when another user sign in, use effect again because another user logged in
+
+  const handleAddHoot = async (hootFormData) => {
+    const newHoot = await hootService.create(hootFormData);
+    setHoots([newHoot, ...hoots]);
+    navigate('/hoots');
+  };
+
+  //===============================================================
   return (
     <>
       <AuthedUserContext.Provider value={user}>
         <NavBar user={user} handleSignout={handleSignout} />
         <Routes>
           {user ? (
-            <Route path="/" element={<Dashboard user={user} />} />
+            // Protected Routes:
+            <>
+              <Route path="/" element={<Dashboard user={user} />} />
+              <Route path="/hoots" element={<HootList hoots={hoots} />} />
+              <Route path="/hoots/:hootId" element={<HootDetails />} />
+              <Route
+                path="/hoots/new"
+                element={<HootForm handleAddHoot={handleAddHoot} />}
+              />
+            </>
           ) : (
+            //puplic
             <Route path="/" element={<Landing />} />
           )}
           <Route path="/signup" element={<SignupForm setUser={setUser} />} />
